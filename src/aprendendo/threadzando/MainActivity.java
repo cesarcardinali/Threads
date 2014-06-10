@@ -1,5 +1,7 @@
 package aprendendo.threadzando;
 
+import java.util.ArrayList;
+
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
@@ -12,13 +14,15 @@ import android.widget.TextView;
 
 public class MainActivity extends Activity {
 
-	public int Products, Consumers, runP, runC, f;
+	public int Stock;
 	public TextView t1;
 	public EditText e1;
-	public Button b1,b2,b3;
+	public Button b1,b2,b3,b4;
 	public Context Contexto;
-	public Producer P1;
-	public Consumer C1;
+	public Producer Produtor;
+	public Consumer Consumidor;
+	public ArrayList<Producer> Produtores;
+	public ArrayList<Consumer> Consumidores;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -31,33 +35,29 @@ public class MainActivity extends Activity {
 		e1 = (EditText) findViewById(R.id.editText1);
 		b1 = (Button) findViewById(R.id.button1);
 		b2 = (Button) findViewById(R.id.button2);
-		b3 = (Button) findViewById(R.id.button3);
-		f=1;
-		runC = 1;
-		runP = 1;
-		P1 = new Producer();
-		P1.execute("P1");
-		C1 = new Consumer();
-		C1.execute("C1");
+		b3 = (Button) findViewById(R.id.button4);
+		b4 = (Button) findViewById(R.id.button3);
+		
+		Produtores = new ArrayList<MainActivity.Producer>();
+		Consumidores = new ArrayList<MainActivity.Consumer>();
+		
 
 		b1.setOnClickListener(new Button.OnClickListener() {
 			@Override
 			public void onClick(View arg0) {
-				if (runP == 1) {
-					runP = 0;
-				} else {
-					runP = 1;
-				}
+				Produtor = new Producer("Produtor " + (Produtores.size()+1));
+				Produtor.execute();
+				Produtores.add(Produtor);
 			}
 		});
 		
 		b2.setOnClickListener(new Button.OnClickListener() {
 			@Override
 			public void onClick(View arg0) {
-				if (runC == 1) {
-					runC = 0;
-				} else {
-					runC = 1;
+				if(!Produtores.isEmpty()){
+					Produtor = Produtores.remove(Produtores.size()-1);
+					Produtor.kill();
+					Produtor.cancel(false);
 				}
 			}
 		});
@@ -65,14 +65,31 @@ public class MainActivity extends Activity {
 		b3.setOnClickListener(new Button.OnClickListener() {
 			@Override
 			public void onClick(View arg0) {
-				if (f == 1) {
-					f = 0;
-				} else {
-					f = 1;
+				Consumidor = new Consumer("Consumidor " + (Consumidores.size()+1));
+				Consumidor.execute();
+				Consumidores.add(Consumidor);
+			}
+		});
+		
+		b4.setOnClickListener(new Button.OnClickListener() {
+			@Override
+			public void onClick(View arg0) {
+				if(!Consumidores.isEmpty()){
+					Consumidor = Consumidores.remove(Consumidores.size()-1);
+					Consumidor.kill();
+					Consumidor.cancel(false);
 				}
 			}
 		});
 	}
+	
+	@Override
+    public void onBackPressed() {
+		Consumidor.cancel(false);
+		Produtor.cancel(false);
+		finish();
+		return;
+    }
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -82,77 +99,123 @@ public class MainActivity extends Activity {
 	}
 	
 	
-	
+	//------------------------------------------------------------------------------------------------------------
 	
 
 	private class Producer extends AsyncTask<String, Integer, Long> {
-		String nome;
+		String id;
+		int run, pause;
+		long aux;
 		
+		public Producer (String iid){
+			id = iid;
+			run = 1;
+			pause = 0;
+		}
+		
+		public void on_off(){
+			if (pause == 1)
+				pause = 0;
+			else
+				pause = 1;
+		}
+		
+		public void kill(){
+			run = 0;
+		}
+
 		@Override
 		protected Long doInBackground(String... params) {
-			nome = params[0];
-			while (f == 1){
-				if(runP == 1)
-				try {
+			while (run == 1) {
+				if (pause == 0)
 					publishProgress(1);
-					Thread.currentThread().sleep(1500);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+				aux = System.currentTimeMillis();
+				while ((aux + 1500) > System.currentTimeMillis()) {}
 			}
 			return null;
 		}
 
 		protected void onProgressUpdate(Integer... progress) {
-			Products++;
+			Stock++;
 			e1 = (EditText) findViewById(R.id.editText1);
-			e1.setText(e1.getText() + "\n" + nome + " adicionou 1");
+			e1.setText(id + " adicionou 1" + "\n" + e1.getText());
 			t1 = (TextView) findViewById(R.id.textView1);
-			t1.setText("Producsts: " + Products);
+			t1.setText("Stock: " + Stock);
 			
 		}
 
 		protected void onPostExecute(Long result) {
 			e1 = (EditText) findViewById(R.id.editText1);
-			e1.setText(e1.getText() + "\n" + nome + "morreu");
+			e1.setText(e1.getText() + "\n" + id + "morreu");
 		}
+		
+		@Override
+	    protected void onCancelled() {
+			kill();
+			super.onCancelled();
+			e1 = (EditText) findViewById(R.id.editText1);
+			e1.setText(id + "morreu" + "\n" + e1.getText());
+			return;
+	    }
 	}
 	
 	//_______________________________________________________________________________________________
 	
 	private class Consumer extends AsyncTask<String, Integer, Long> {
-		String nome;
+		String id;
+		int run, pause;
+		long aux;
+		
+		public Consumer (String iid){
+			id = iid;
+			run = 1;
+			pause = 0;
+		}
+		
+		public void on_off(){
+			if (pause == 1)
+				pause = 0;
+			else
+				pause = 1;
+		}
+		
+		public void kill(){
+			run = 0;
+		}
 		
 		@Override
 		protected Long doInBackground(String... params) {
-			nome = params[0];
-			while (f == 1){
-				if(runC == 1)
-				try {
+			while (run == 1) {
+				if (pause == 0)
 					publishProgress(1);
-					Thread.currentThread().sleep(3000);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+				aux = System.currentTimeMillis();
+				while ((aux + 2500) > System.currentTimeMillis()) {}
 			}
 			return null;
 		}
 
 		protected void onProgressUpdate(Integer... progress) {
-			Products--;
+			Stock--;
 			e1 = (EditText) findViewById(R.id.editText1);
-			e1.setText(e1.getText() + "\n" + nome + " consumiu 1");
+			e1.setText(id + " consumiu 1" + "\n" + e1.getText());
 			t1 = (TextView) findViewById(R.id.textView1);
-			t1.setText("Producsts: " + Products);
+			t1.setText("Stock: " + Stock);
 			
 		}
 
 		protected void onPostExecute(Long result) {
 			e1 = (EditText) findViewById(R.id.editText1);
-			e1.setText(e1.getText() + "\n" + nome + "morreu");
+			e1.setText(e1.getText() + "\n" + id + "morreu");
 		}
+		
+		@Override
+	    protected void onCancelled() {
+			kill();
+			super.onCancelled();
+			e1 = (EditText) findViewById(R.id.editText1);
+			e1.setText(id + "morreu" + "\n" + e1.getText());
+			return;
+	    }
 	}
 
 }
